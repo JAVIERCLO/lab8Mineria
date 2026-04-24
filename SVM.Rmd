@@ -111,7 +111,116 @@ cm_poly <- confusionMatrix(pred_poly, test$price_cat)
 cm_poly
 ```
 
+```{r punto 8: comparacion entre modelos SVM}
+# --- Métricas de cada modelo SVM sobre test ---
+acc_lineal <- cm_lineal$overall["Accuracy"]
+acc_radial <- cm_radial$overall["Accuracy"]
+acc_poly   <- cm_poly$overall["Accuracy"]
 
+kappa_lineal <- cm_lineal$overall["Kappa"]
+kappa_radial <- cm_radial$overall["Kappa"]
+kappa_poly   <- cm_poly$overall["Kappa"]
 
+# Sensibilidad por clase (macro)
+sens_lineal <- mean(cm_lineal$byClass[, "Sensitivity"], na.rm = TRUE)
+sens_radial <- mean(cm_radial$byClass[, "Sensitivity"], na.rm = TRUE)
+sens_poly   <- mean(cm_poly$byClass[,   "Sensitivity"], na.rm = TRUE)
+
+spec_lineal <- mean(cm_lineal$byClass[, "Specificity"], na.rm = TRUE)
+spec_radial <- mean(cm_radial$byClass[, "Specificity"], na.rm = TRUE)
+spec_poly   <- mean(cm_poly$byClass[,   "Specificity"], na.rm = TRUE)
+
+comparacion_svm <- data.frame(
+  Modelo       = c("SVM Lineal", "SVM Radial", "SVM Polinomial"),
+  Accuracy     = round(c(acc_lineal, acc_radial, acc_poly), 4),
+  Kappa        = round(c(kappa_lineal, kappa_radial, kappa_poly), 4),
+  Sens_Macro   = round(c(sens_lineal, sens_radial, sens_poly), 4),
+  Spec_Macro   = round(c(spec_lineal, spec_radial, spec_poly), 4)
+)
+
+print(comparacion_svm)
+
+# Errores por clase: donde se equivoca más cada modelo
+cat("\n--- Errores por clase: SVM Lineal ---\n")
+print(cm_lineal$table)
+cat("\n--- Errores por clase: SVM Radial ---\n")
+print(cm_radial$table)
+cat("\n--- Errores por clase: SVM Polinomial ---\n")
+print(cm_poly$table)
+```
+
+```{r punto 9: comparacion SVM vs modelos anteriores de clasificacion}
+# Asume que los modelos anteriores ya existen en el environment con sus confusionMatrix:
+# cm_arbol, cm_rf, cm_nb, cm_knn, cm_logistica
+# Si no están cargados, cargar el .RData correspondiente antes de correr este chunk
+
+modelos_clf <- list(
+  "Arbol Decision"   = cm_arbol,
+  "Random Forest"    = cm_rf,
+  "Naive Bayes"      = cm_nb,
+  "KNN"              = cm_knn,
+  "Reg. Logistica"   = cm_logistica,
+  "SVM Lineal"       = cm_lineal,
+  "SVM Radial"       = cm_radial,
+  "SVM Polinomial"   = cm_poly
+)
+
+resumen_clf <- do.call(rbind, lapply(names(modelos_clf), function(nombre) {
+  cm <- modelos_clf[[nombre]]
+  data.frame(
+    Modelo     = nombre,
+    Accuracy   = round(cm$overall["Accuracy"], 4),
+    Kappa      = round(cm$overall["Kappa"], 4),
+    Sens_Macro = round(mean(cm$byClass[, "Sensitivity"], na.rm = TRUE), 4),
+    Spec_Macro = round(mean(cm$byClass[, "Specificity"], na.rm = TRUE), 4)
+  )
+}))
+
+rownames(resumen_clf) <- NULL
+print(resumen_clf)
+
+mejor_clf <- resumen_clf[which.max(resumen_clf$Accuracy), "Modelo"]
+cat("\nMejor modelo de clasificación por Accuracy:", mejor_clf, "\n")
+```
+
+```{r punto 10: tabla de sobreajuste modelos de clasificacion}
+# Para detectar sobreajuste comparamos Accuracy en TRAIN vs TEST para cada modelo.
+# Un modelo sobreajustado tiene accuracy train >> accuracy test.
+
+# Recalcular accuracy en train para los modelos SVM (caret guarda resampling)
+acc_train_lineal <- max(svm_lineal$results$Accuracy)
+acc_train_radial <- max(svm_radial$results$Accuracy)
+acc_train_poly   <- max(svm_poly$results$Accuracy)
+
+# Para los modelos anteriores se deben tener los objetos caret (o las predicciones en train).
+# Ejemplo genérico: reemplazar con los valores reales de cada hoja anterior.
+# acc_train_arbol, acc_train_rf, etc.  — completar con valores guardados
+
+sobreajuste <- data.frame(
+  Modelo        = c("SVM Lineal", "SVM Radial", "SVM Polinomial"),
+  Acc_Train_CV  = round(c(acc_train_lineal, acc_train_radial, acc_train_poly), 4),
+  Acc_Test      = round(c(acc_lineal, acc_radial, acc_poly), 4),
+  Diferencia    = round(c(acc_train_lineal - acc_lineal,
+                          acc_train_radial - acc_radial,
+                          acc_train_poly   - acc_poly), 4),
+  Diagnostico   = ifelse(
+    abs(c(acc_train_lineal - acc_lineal,
+          acc_train_radial - acc_radial,
+          acc_train_poly   - acc_poly)) > 0.05,
+    "Sobreajuste probable", "Ajuste razonable"
+  )
+)
+
+# Si tienes los valores de modelos anteriores, agregalos aqui:
+# sobreajuste <- rbind(sobreajuste, data.frame(
+#   Modelo = "Random Forest", Acc_Train_CV = X, Acc_Test = Y, Diferencia = X-Y, Diagnostico = ...
+# ))
+
+print(sobreajuste)
+
+cat("\nNota: Para clasificacion, el sobreajuste se detecta comparando accuracy (y Kappa)\n",
+    "en entrenamiento vs prueba. Una diferencia > 5 pp sugiere sobreajuste.\n",
+    "Tambien se pueden comparar precision, recall y F1 por clase.\n")
+```
 
 
