@@ -1,6 +1,8 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r carga de datos}
@@ -99,7 +101,7 @@ svm_poly <- train(
   data = train,
   method = "svmPoly",
   trControl = control,
-  tuneLength = 5,
+  tuneLength = 3,
   preProcess = c("center", "scale")
 )
 
