@@ -1,0 +1,115 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r carga de datos}
+load("listings_modificado.RData")
+```
+
+```{r paquetes}
+library(caret)
+library(e1071)
+```
+
+
+```{r conjuntos de entrenamiento y prueba}
+set.seed(123)
+
+muestra_idx <- sample(1:nrow(listings), size = 10000)
+muestra <- listings[muestra_idx, ]
+
+n <- nrow(muestra)
+train_idx <- sample(1:n, size = 0.7 * n)
+
+train <- muestra[train_idx, ]
+test  <- muestra[-train_idx, ]
+```
+
+```{r variable categórica}
+cuts <- quantile(train$price, probs = c(0.33, 0.66), na.rm = TRUE)
+
+train$price_cat <- cut(train$price,
+                       breaks = c(-Inf, cuts[1], cuts[2], Inf),
+                       labels = c("Economica", "Intermedia", "Cara"))
+
+test$price_cat <- cut(test$price,
+                      breaks = c(-Inf, cuts[1], cuts[2], Inf),
+                      labels = c("Economica", "Intermedia", "Cara"))
+
+control <- trainControl(method = "cv", number = 5)
+```
+
+```{r modelo 1: SVM lineal}
+set.seed(123)
+
+svm_lineal <- train(
+  price_cat ~ accommodates + bathrooms_num + bedrooms + beds +
+    host_response_rate + host_acceptance_rate +
+    calculated_host_listings_count + number_of_reviews +
+    reviews_per_month + review_scores_rating +
+    minimum_nights + availability_365 +
+    room_type + host_is_superhost + instant_bookable + bathroom_type,
+  data = train,
+  method = "svmLinear",
+  trControl = control,
+  tuneLength = 5,
+  preProcess = c("center", "scale")
+)
+
+pred_lineal <- predict(svm_lineal, newdata = test)
+cm_lineal <- confusionMatrix(pred_lineal, test$price_cat)
+
+cm_lineal
+```
+
+```{r modelo 2: SVM radial}
+set.seed(123)
+
+svm_radial <- train(
+  price_cat ~ accommodates + bathrooms_num + bedrooms + beds +
+    host_response_rate + host_acceptance_rate +
+    calculated_host_listings_count + number_of_reviews +
+    reviews_per_month + review_scores_rating +
+    minimum_nights + availability_365 +
+    room_type + host_is_superhost + instant_bookable + bathroom_type,
+  data = train,
+  method = "svmRadial",
+  trControl = control,
+  tuneLength = 5,
+  preProcess = c("center", "scale")
+)
+
+pred_radial <- predict(svm_radial, newdata = test)
+cm_radial <- confusionMatrix(pred_radial, test$price_cat)
+
+cm_radial
+```
+
+```{r modelo 3: SVM polinomial}
+set.seed(123)
+
+svm_poly <- train(
+  price_cat ~ accommodates + bathrooms_num + bedrooms + beds +
+    host_response_rate + host_acceptance_rate +
+    calculated_host_listings_count + number_of_reviews +
+    reviews_per_month + review_scores_rating +
+    minimum_nights + availability_365 +
+    room_type + host_is_superhost + instant_bookable + bathroom_type,
+  data = train,
+  method = "svmPoly",
+  trControl = control,
+  tuneLength = 5,
+  preProcess = c("center", "scale")
+)
+
+pred_poly <- predict(svm_poly, newdata = test)
+cm_poly <- confusionMatrix(pred_poly, test$price_cat)
+
+cm_poly
+```
+
+
+
+
+
