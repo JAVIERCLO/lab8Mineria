@@ -14,7 +14,6 @@ library(caret)
 library(e1071)
 ```
 
-
 ```{r conjuntos de entrenamiento y prueba}
 set.seed(123)
 
@@ -223,4 +222,32 @@ cat("\nNota: Para clasificacion, el sobreajuste se detecta comparando accuracy (
     "Tambien se pueden comparar precision, recall y F1 por clase.\n")
 ```
 
+```{r SVM de regresión}
+control_reg <- trainControl(method = "cv", number = 5)
+
+set.seed(123)
+# Hecho con kernel radial
+svm_reg <- train(
+  price ~ accommodates + bathrooms_num + bedrooms + beds +
+    host_response_rate + host_acceptance_rate +
+    calculated_host_listings_count + number_of_reviews +
+    reviews_per_month + review_scores_rating +
+    minimum_nights + availability_365 +
+    room_type + host_is_superhost + instant_bookable + bathroom_type,
+  data = train,
+  method = "svmRadial",
+  trControl = control_reg,
+  tuneLength = 5,
+  preProcess = c("center", "scale"),
+  na.action = na.omit
+)
+
+print(svm_reg)
+plot(svm_reg)
+
+pred_svm_reg <- predict(svm_reg, newdata = test)
+resultados_svm_reg <- postResample(pred = pred_svm_reg, obs = test$price)
+
+print(resultados_svm_reg)
+```
 
